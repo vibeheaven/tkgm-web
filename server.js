@@ -34,21 +34,10 @@ async function uploadToDrive(jobId, filePath, filename) {
     const parents = [GOOGLE_DRIVE_ROOT];
     const mimeType = filename.endsWith('.mp4') ? 'video/mp4' : filename.endsWith('.png') ? 'image/png' : 'application/octet-stream';
 
-    const folderRes = await drive.files.create({
-      resource: {
-        name: jobId,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents
-      },
-      fields: 'id',
-      ...driveOpts
-    });
-    const folderId = folderRes.data.id;
-
     const fileRes = await drive.files.create({
       resource: {
-        name: filename,
-        parents: [folderId]
+        name: jobId + '_' + filename,
+        parents
       },
       media: {
         mimeType,
