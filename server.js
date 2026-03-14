@@ -26,22 +26,25 @@ async function uploadToDrive(jobId, filePath, filename) {
     const { google } = require('googleapis');
     const auth = new google.auth.GoogleAuth({
       keyFile: GOOGLE_CREDENTIALS_PATH,
-      scopes: ['https://www.googleapis.com/auth/drive.file']
+      scopes: ['https://www.googleapis.com/auth/drive']
     });
     const drive = google.drive({ version: 'v3', auth });
 
+    const driveOpts = { supportsAllDrives: true };
     const parents = [GOOGLE_DRIVE_ROOT];
+    const mimeType = filename.endsWith('.mp4') ? 'video/mp4' : filename.endsWith('.png') ? 'image/png' : 'application/octet-stream';
+
     const folderRes = await drive.files.create({
       resource: {
         name: jobId,
         mimeType: 'application/vnd.google-apps.folder',
         parents
       },
-      fields: 'id'
+      fields: 'id',
+      ...driveOpts
     });
     const folderId = folderRes.data.id;
 
-    const mimeType = filename.endsWith('.mp4') ? 'video/mp4' : filename.endsWith('.png') ? 'image/png' : 'application/octet-stream';
     const fileRes = await drive.files.create({
       resource: {
         name: filename,
@@ -51,7 +54,8 @@ async function uploadToDrive(jobId, filePath, filename) {
         mimeType,
         body: fs.createReadStream(filePath)
       },
-      fields: 'id,webViewLink,webContentLink'
+      fields: 'id,webViewLink,webContentLink',
+      ...driveOpts
     });
     return { success: true, driveUrl: fileRes.data.webContentLink || fileRes.data.webViewLink };
   } catch (err) {

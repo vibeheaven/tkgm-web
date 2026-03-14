@@ -12,14 +12,14 @@ npm install
 
 Video/fotoğraflar otomatik olarak Drive'a yüklenir. Yükleme başarılıysa sunucudan silinir.
 
-**Önemli:** Service Account'ın kendi storage'ı yok. Paylaşılan klasör zorunlu.
+**ÖNEMLİ (Nisan 2025 sonrası):** Yeni Service Account'lar "My Drive" paylaşılan klasörlere yükleyemez. **Shared Drive (Takım Sürücüsü)** zorunlu.
 
-1. [Google Cloud Console](https://console.cloud.google.com) → Proje oluştur
-2. APIs & Services → Enable APIs → **Google Drive API** etkinleştir
-3. Credentials → Create Credentials → **Service Account** → JSON key indir → `google-credentials.json` olarak proje köküne koy
-4. **Drive'da klasör oluştur** → Sağ tık → Paylaş → Service Account email (`xxx@xxx.iam.gserviceaccount.com`) ekle → **Editor** ver
-5. Klasör URL'sinden ID al: `https://drive.google.com/drive/folders/1abc...xyz` → `1abc...xyz` kısmı
-6. `GOOGLE_DRIVE_ROOT_FOLDER_ID=1abc...xyz` env değişkenini ayarla
+1. [Google Cloud Console](https://console.cloud.google.com) → Proje → APIs & Services → **Google Drive API** etkinleştir
+2. Credentials → **Service Account** → JSON key indir → `google-credentials.json` proje köküne koy
+3. **drive.google.com** → Sol menü **"Takım sürücüleri" / "Shared drives"** → Yeni takım sürücüsü oluştur
+4. Takım sürücüsüne sağ tık → **Üyelere ekle** → Service Account email (`xxx@xxx.iam.gserviceaccount.com`) → **İçerik yöneticisi**
+5. Takım sürücüsü veya içindeki klasör URL'sinden ID al: `.../folders/1abc...xyz`
+6. `GOOGLE_DRIVE_ROOT_FOLDER_ID=1abc...xyz` (server.js'de varsayılan var)
 
 ## Çalıştırma
 
