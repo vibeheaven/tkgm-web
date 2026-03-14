@@ -12,11 +12,14 @@ npm install
 
 Video/fotoğraflar otomatik olarak Drive'a yüklenir. Yükleme başarılıysa sunucudan silinir.
 
+**Önemli:** Service Account'ın kendi storage'ı yok. Paylaşılan klasör zorunlu.
+
 1. [Google Cloud Console](https://console.cloud.google.com) → Proje oluştur
 2. APIs & Services → Enable APIs → **Google Drive API** etkinleştir
-3. Credentials → Create Credentials → **Service Account** → JSON key indir
-4. JSON dosyasını `google-credentials.json` olarak proje köküne koy
-5. (Opsiyonel) Drive'da klasör oluştur, Service Account email ile **Editor** olarak paylaş → Klasör ID'sini `GOOGLE_DRIVE_ROOT_FOLDER_ID` env ile ver
+3. Credentials → Create Credentials → **Service Account** → JSON key indir → `google-credentials.json` olarak proje köküne koy
+4. **Drive'da klasör oluştur** → Sağ tık → Paylaş → Service Account email (`xxx@xxx.iam.gserviceaccount.com`) ekle → **Editor** ver
+5. Klasör URL'sinden ID al: `https://drive.google.com/drive/folders/1abc...xyz` → `1abc...xyz` kısmı
+6. `GOOGLE_DRIVE_ROOT_FOLDER_ID=1abc...xyz` env değişkenini ayarla
 
 ## Çalıştırma
 

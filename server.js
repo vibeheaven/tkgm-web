@@ -11,12 +11,16 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 // Google Drive - Service Account gerekli (API key yeterli değil)
 const GOOGLE_CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, 'google-credentials.json');
-const GOOGLE_DRIVE_ROOT = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || null;
+const GOOGLE_DRIVE_ROOT = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '1okL8SQ9ZYLc76m6AaEL6hXJQRTIvvyD6';
 
 async function uploadToDrive(jobId, filePath, filename) {
   if (!fs.existsSync(GOOGLE_CREDENTIALS_PATH)) {
     console.warn('[Drive] Credentials bulunamadı:', GOOGLE_CREDENTIALS_PATH);
     return { success: false, error: 'Google credentials yok' };
+  }
+  if (!GOOGLE_DRIVE_ROOT) {
+    console.warn('[Drive] GOOGLE_DRIVE_ROOT_FOLDER_ID gerekli. Drive\'da klasör oluşturup Service Account ile paylaş, klasör ID\'sini env\'e ekle.');
+    return { success: false, error: 'GOOGLE_DRIVE_ROOT_FOLDER_ID gerekli' };
   }
   try {
     const { google } = require('googleapis');
@@ -26,7 +30,7 @@ async function uploadToDrive(jobId, filePath, filename) {
     });
     const drive = google.drive({ version: 'v3', auth });
 
-    const parents = GOOGLE_DRIVE_ROOT ? [GOOGLE_DRIVE_ROOT] : [];
+    const parents = [GOOGLE_DRIVE_ROOT];
     const folderRes = await drive.files.create({
       resource: {
         name: jobId,
