@@ -131,9 +131,12 @@ async function processJob(jobId, expectedFrames) {
         .outputOptions([
           '-vframes', String(frameCount),
           '-c:v', 'libx264',
+          '-profile:v', 'main',
+          '-level', '4.0',
           '-crf', '18',
           '-preset', 'veryfast',
           '-pix_fmt', 'yuv420p',
+          '-g', '30',
           '-movflags', '+faststart'
         ])
         .output(segPath)
@@ -155,7 +158,7 @@ async function processJob(jobId, expectedFrames) {
       ffmpeg()
         .input(concatListPath)
         .inputOptions(['-f', 'concat', '-safe', '0'])
-        .outputOptions(['-c', 'copy'])
+        .outputOptions(['-c', 'copy', '-movflags', '+faststart'])
         .output(mp4Path)
         .on('end', resolve)
         .on('error', reject)
@@ -477,6 +480,7 @@ app.get('/api/job/:jobId/video', (req, res) => {
   const mime = ext === '.mp4' ? 'video/mp4' : ext === '.png' ? 'image/png' : 'application/octet-stream';
   res.setHeader('Content-Type', mime);
   res.setHeader('Content-Disposition', 'inline; filename="' + job.filename + '"');
+  res.setHeader('Accept-Ranges', 'bytes');
   res.sendFile(job.path);
 });
 
