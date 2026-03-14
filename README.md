@@ -12,14 +12,14 @@ npm install
 
 Video/fotoğraflar otomatik olarak Drive'a yüklenir. Yükleme başarılıysa sunucudan silinir.
 
-**ÖNEMLİ (Nisan 2025 sonrası):** Yeni Service Account'lar "My Drive" paylaşılan klasörlere yükleyemez. **Shared Drive (Takım Sürücüsü)** zorunlu.
+**OAuth 2.0 kullanımı (Nisan 2025 sonrası Service Account çalışmıyor):**
 
 1. [Google Cloud Console](https://console.cloud.google.com) → Proje → APIs & Services → **Google Drive API** etkinleştir
-2. Credentials → **Service Account** → JSON key indir → `google-credentials.json` proje köküne koy
-3. **drive.google.com** → Sol menü **"Takım sürücüleri" / "Shared drives"** → Yeni takım sürücüsü oluştur
-4. Takım sürücüsüne sağ tık → **Üyelere ekle** → Service Account email (`xxx@xxx.iam.gserviceaccount.com`) → **İçerik yöneticisi**
-5. Takım sürücüsü veya içindeki klasör URL'sinden ID al: `.../folders/1abc...xyz`
-6. `GOOGLE_DRIVE_ROOT_FOLDER_ID=1abc...xyz` (server.js'de varsayılan var)
+2. Credentials → **Create Credentials** → **OAuth client ID** → Application type: **Web application**
+3. Authorized redirect URIs: `http://localhost:3010/api/drive-auth/callback` (sunucu farklı host/port ise onu ekle)
+4. Client ID ve Client Secret'ı env'e ekle: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`
+5. Sunucuyu başlat, tarayıcıda **http://localhost:3010/api/drive-auth** adresine git
+6. Google ile giriş yap, izin ver → Refresh token kaydedilir
 
 ## Çalıştırma
 

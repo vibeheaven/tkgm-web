@@ -5,6 +5,8 @@ jobs/
 .env
 google-credentials.json
 *-credentials.json
+client_secret*.json
+drive-refresh-token.json
 *.mp4
 *.mov
 *.zip

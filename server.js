@@ -9,28 +9,59 @@ const ffmpegPath = require('ffmpeg-static');
 const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-// Google Drive - Service Account gerekli (API key yeterli değil)
-const GOOGLE_CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, 'google-credentials.json');
+// Google Drive - OAuth 2.0 (client_secret*.json veya env'den)
 const GOOGLE_DRIVE_ROOT = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '1okL8SQ9ZYLc76m6AaEL6hXJQRTIvvyD6';
+const DRIVE_REFRESH_TOKEN_PATH = path.join(__dirname, 'drive-refresh-token.json');
+const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
+
+function loadDriveOAuth() {
+  if (process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET) {
+    return { client_id: process.env.GOOGLE_OAUTH_CLIENT_ID, client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET };
+  }
+  try {
+    const files = fs.readdirSync(__dirname).filter(f => f.startsWith('client_secret') && f.endsWith('.json'));
+    if (files.length) {
+      const j = JSON.parse(fs.readFileSync(path.join(__dirname, files[0]), 'utf8'));
+      const web = j.web || j.installed;
+      if (web) return { client_id: web.client_id, client_secret: web.client_secret };
+    }
+  } catch (e) {}
+  return null;
+}
+
+function getOAuth2Client(baseUrl) {
+  const oauth = loadDriveOAuth();
+  if (!oauth) return null;
+  const { google } = require('googleapis');
+  const redirectUri = baseUrl ? baseUrl + '/api/drive-auth/callback' : 'http://localhost:3010/api/drive-auth/callback';
+  return new google.auth.OAuth2(oauth.client_id, oauth.client_secret, redirectUri);
+}
 
 async function uploadToDrive(jobId, filePath, filename) {
-  if (!fs.existsSync(GOOGLE_CREDENTIALS_PATH)) {
-    console.warn('[Drive] Credentials bulunamadı:', GOOGLE_CREDENTIALS_PATH);
-    return { success: false, error: 'Google credentials yok' };
-  }
   if (!GOOGLE_DRIVE_ROOT) {
-    console.warn('[Drive] GOOGLE_DRIVE_ROOT_FOLDER_ID gerekli. Drive\'da klasör oluşturup Service Account ile paylaş, klasör ID\'sini env\'e ekle.');
+    console.warn('[Drive] GOOGLE_DRIVE_ROOT_FOLDER_ID gerekli');
     return { success: false, error: 'GOOGLE_DRIVE_ROOT_FOLDER_ID gerekli' };
+  }
+  let auth = null;
+  if (fs.existsSync(DRIVE_REFRESH_TOKEN_PATH)) {
+    try {
+      const tokens = JSON.parse(fs.readFileSync(DRIVE_REFRESH_TOKEN_PATH, 'utf8'));
+      const oauth2 = getOAuth2Client();
+      if (oauth2) {
+        oauth2.setCredentials({ refresh_token: tokens.refresh_token });
+        auth = oauth2;
+      }
+    } catch (e) {
+      console.warn('[Drive] Refresh token okunamadı:', e.message);
+    }
+  }
+  if (!auth) {
+    console.warn('[Drive] OAuth yapılandırılmamış. GET /api/drive-auth ile yetkilendir.');
+    return { success: false, error: 'Drive OAuth gerekli - /api/drive-auth' };
   }
   try {
     const { google } = require('googleapis');
-    const auth = new google.auth.GoogleAuth({
-      keyFile: GOOGLE_CREDENTIALS_PATH,
-      scopes: ['https://www.googleapis.com/auth/drive']
-    });
     const drive = google.drive({ version: 'v3', auth });
-
-    const driveOpts = { supportsAllDrives: true };
     const parents = [GOOGLE_DRIVE_ROOT];
     const mimeType = filename.endsWith('.mp4') ? 'video/mp4' : filename.endsWith('.png') ? 'image/png' : 'application/octet-stream';
 
@@ -44,7 +75,7 @@ async function uploadToDrive(jobId, filePath, filename) {
         body: fs.createReadStream(filePath)
       },
       fields: 'id,webViewLink,webContentLink',
-      ...driveOpts
+      supportsAllDrives: true
     });
     return { success: true, driveUrl: fileRes.data.webContentLink || fileRes.data.webViewLink };
   } catch (err) {
@@ -336,6 +367,36 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Ana sayfa
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Google Drive OAuth - tek seferlik yetkilendirme (kişisel hesaplar için)
+app.get('/api/drive-auth', (req, res) => {
+  const oauth2 = getOAuth2Client(req.protocol + '://' + (req.get('host') || 'localhost:' + PORT));
+  if (!oauth2) {
+    return res.status(500).send('OAuth yapılandırılmamış. client_secret*.json dosyası veya GOOGLE_OAUTH_CLIENT_ID/SECRET env gerekli');
+  }
+  const url = oauth2.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES,
+    prompt: 'consent'
+  });
+  res.redirect(url);
+});
+
+app.get('/api/drive-auth/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.status(400).send('Code yok');
+  const baseUrl = req.protocol + '://' + (req.get('host') || 'localhost:' + PORT);
+  const oauth2 = getOAuth2Client(baseUrl);
+  if (!oauth2) return res.status(500).send('OAuth yapılandırılmamış');
+  try {
+    const { tokens } = await oauth2.getToken(code);
+    fs.writeFileSync(DRIVE_REFRESH_TOKEN_PATH, JSON.stringify({ refresh_token: tokens.refresh_token }));
+    res.send('<h2>Drive yetkilendirmesi tamamlandı.</h2><p>Bu sayfayı kapatabilirsiniz. Artık videolar Drive\'a yüklenecek.</p>');
+  } catch (err) {
+    console.error('[Drive] Auth hatası:', err);
+    res.status(500).send('Yetkilendirme hatası: ' + err.message);
+  }
 });
 
 // KML'den polygon koordinatlarını parse et
