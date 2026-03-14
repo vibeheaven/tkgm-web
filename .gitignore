@@ -3,6 +3,8 @@ node_modules/
 recordings/
 jobs/
 .env
+google-credentials.json
+*-credentials.json
 *.mp4
 *.mov
 *.zip

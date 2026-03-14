@@ -8,6 +8,16 @@ Node.js ile çalışan, CesiumJS tabanlı tam ekran dikey harita arayüzü. Term
 npm install
 ```
 
+### Google Drive (Opsiyonel)
+
+Video/fotoğraflar otomatik olarak Drive'a yüklenir. Yükleme başarılıysa sunucudan silinir.
+
+1. [Google Cloud Console](https://console.cloud.google.com) → Proje oluştur
+2. APIs & Services → Enable APIs → **Google Drive API** etkinleştir
+3. Credentials → Create Credentials → **Service Account** → JSON key indir
+4. JSON dosyasını `google-credentials.json` olarak proje köküne koy
+5. (Opsiyonel) Drive'da klasör oluştur, Service Account email ile **Editor** olarak paylaş → Klasör ID'sini `GOOGLE_DRIVE_ROOT_FOLDER_ID` env ile ver
+
 ## Çalıştırma
 
 ```bash

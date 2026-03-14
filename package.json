@@ -12,6 +12,7 @@
     "video": "node cli.js"
   },
   "dependencies": {
+    "googleapis": "^144.0.0",
     "express": "^4.18.2",
     "puppeteer": "^24.15.0",
     "ffmpeg-static": "^5.2.0",

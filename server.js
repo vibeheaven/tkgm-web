@@ -9,6 +9,64 @@ const ffmpegPath = require('ffmpeg-static');
 const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+// Google Drive - Service Account gerekli (API key yeterli değil)
+const GOOGLE_CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, 'google-credentials.json');
+const GOOGLE_DRIVE_ROOT = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || null;
+
+async function uploadToDrive(jobId, filePath, filename) {
+  if (!fs.existsSync(GOOGLE_CREDENTIALS_PATH)) {
+    console.warn('[Drive] Credentials bulunamadı:', GOOGLE_CREDENTIALS_PATH);
+    return { success: false, error: 'Google credentials yok' };
+  }
+  try {
+    const { google } = require('googleapis');
+    const auth = new google.auth.GoogleAuth({
+      keyFile: GOOGLE_CREDENTIALS_PATH,
+      scopes: ['https://www.googleapis.com/auth/drive.file']
+    });
+    const drive = google.drive({ version: 'v3', auth });
+
+    const parents = GOOGLE_DRIVE_ROOT ? [GOOGLE_DRIVE_ROOT] : [];
+    const folderRes = await drive.files.create({
+      resource: {
+        name: jobId,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents
+      },
+      fields: 'id'
+    });
+    const folderId = folderRes.data.id;
+
+    const mimeType = filename.endsWith('.mp4') ? 'video/mp4' : filename.endsWith('.png') ? 'image/png' : 'application/octet-stream';
+    const fileRes = await drive.files.create({
+      resource: {
+        name: filename,
+        parents: [folderId]
+      },
+      media: {
+        mimeType,
+        body: fs.createReadStream(filePath)
+      },
+      fields: 'id,webViewLink,webContentLink'
+    });
+    return { success: true, driveUrl: fileRes.data.webContentLink || fileRes.data.webViewLink };
+  } catch (err) {
+    console.error('[Drive] Yükleme hatası:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+function deleteFilePermanently(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log('[Drive] Sunucudan silindi:', filePath);
+    }
+  } catch (e) {
+    console.error('[Drive] Silme hatası:', e.message);
+  }
+}
+
 const VALID_CAMERA_TYPES = ['orbit', 'zooma', 'zoomb', 'zoomc', 'all', 'photo'];
 
 const JOBS_DIR = path.join(__dirname, 'jobs');
@@ -110,6 +168,13 @@ async function processJob(jobId, expectedFrames) {
     }
     console.log(`Job ${jobId} tamamlandı (photo): ${pngPath}${job.webhook ? ' → webhook\'a PNG gönderildi' : ''}`);
     removeFromQueueAndActivateNext(jobId);
+    uploadToDrive(jobId, pngPath, pngName).then((r) => {
+      if (r.success) {
+        if (r.driveUrl) job.drive_url = r.driveUrl;
+        deleteFilePermanently(pngPath);
+        job.path = null;
+      }
+    });
     return;
   }
 
@@ -178,6 +243,13 @@ async function processJob(jobId, expectedFrames) {
     }
     console.log(`Job ${jobId} tamamlandı: ${mp4Path}`);
     removeFromQueueAndActivateNext(jobId);
+    uploadToDrive(jobId, mp4Path, mp4Name).then((r) => {
+      if (r.success) {
+        if (r.driveUrl) job.drive_url = r.driveUrl;
+        deleteFilePermanently(mp4Path);
+        job.path = null;
+      }
+    });
   } catch (err) {
     job.status = 'failed';
     job.error = err.message;
@@ -450,6 +522,7 @@ app.get('/api/job/:jobId', (req, res) => {
     status: job.status,
     path: job.path,
     filename: job.filename,
+    drive_url: job.drive_url || null,
     error: job.error,
     ...(queueInfo && {
       queue_position: queueInfo.queue_position,
@@ -466,15 +539,16 @@ app.get('/api/job/:jobId/payload', (req, res) => {
   res.json(job.payload);
 });
 
-// Oluşturulmuş video/fotoğrafı direkt döndür
+// Oluşturulmuş video/fotoğrafı direkt döndür (veya Drive'a yönlendir)
 app.get('/api/job/:jobId/video', (req, res) => {
   const job = jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: 'Job bulunamadı' });
   if (job.status !== 'completed') {
     return res.status(400).json({ error: 'Video henüz hazır değil', status: job.status });
   }
+  if (job.drive_url) return res.redirect(302, job.drive_url);
   if (!job.path || !fs.existsSync(job.path)) {
-    return res.status(404).json({ error: 'Dosya bulunamadı' });
+    return res.status(404).json({ error: 'Dosya bulunamadı (Drive\'a yüklenmiş olabilir)' });
   }
   const ext = path.extname(job.filename).toLowerCase();
   const mime = ext === '.mp4' ? 'video/mp4' : ext === '.png' ? 'image/png' : 'application/octet-stream';
