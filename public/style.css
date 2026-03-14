@@ -1,0 +1,81 @@
+/* Dikey (portrait) tam ekran harita */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#cesiumContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-width: 100vw;
+}
+
+/* Sabit boyut verildiğinde ortala */
+#cesiumContainer.render-size {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Cesium widget'ı dikey görünüm için ayarla */
+.cesium-viewer {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.cesium-viewer-bottom {
+  display: none; /* Alt bilgi çubuğunu gizle */
+}
+
+.tour-btn {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: #2779F5;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.tour-btn:hover {
+  background: #1a5fc9;
+}
+.tour-btn.hidden {
+  display: none;
+}
+
+.capture-hint {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  font-size: 12px;
+  border-radius: 8px;
+  z-index: 999;
+  max-width: 90%;
+  text-align: center;
+}
+

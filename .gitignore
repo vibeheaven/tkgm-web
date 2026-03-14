@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+recordings/
+jobs/
+.env
+*.mp4
+*.mov
+*.zip
+*.log
+dist/
+build/

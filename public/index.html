@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TKGM Harita</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/Widgets/widgets.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <button id="tourBtn" class="tour-btn hidden">Tour Başlat</button>
+  <div id="captureHint" class="capture-hint">
+    Video kaydı için bu sayfayı açık tutun. curl ile istek attıktan sonra frame'ler otomatik yakalanır.
+  </div>
+
+  <script>
+    window.CESIUM_BASE_URL = 'https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/';
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/Cesium.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="services/orbitService.js"></script>
+  <script src="services/zoomService.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
