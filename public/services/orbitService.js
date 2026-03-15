@@ -32,12 +32,14 @@ const OrbitService = (function () {
       onCapture
     } = opts;
 
+    // Sinematik: 90° per süre (15 sn'de 90° = 6°/sn), 360° yerine yavaş dönüş
+    const degPerDuration = 90;
     state = {
       center,
       range: cameraRange,
       pitch,
       heading,
-      degPerSec: 360 / videoDuration,
+      degPerSec: degPerDuration / videoDuration,
       lastTime: performance.now()
     };
 
@@ -57,10 +59,10 @@ const OrbitService = (function () {
 
     viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(center, 1), {
       offset: new Cesium.HeadingPitchRange(heading, pitch, cameraRange),
-      duration: 1.5
+      duration: 2.5
     });
 
-    const flyToDuration = 1500;
+    const flyToDuration = 2500;
     const totalDelayBeforeCapture = flyToDuration + alignmentDelayMs;
 
     if (autoplay) {

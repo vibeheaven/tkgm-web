@@ -111,14 +111,20 @@ const ZoomService = (function () {
       save,
       job_id,
       onCapture,
-      zoomType
+      zoomType,
+      linePoints: precomputedLinePoints
     } = opts;
 
-    const linePoints = await getLinePoints(center, polygonPositions, terrainProvider, zoomType || 'zooma');
+    const linePoints = precomputedLinePoints || await getLinePoints(center, polygonPositions, terrainProvider, zoomType || 'zooma');
     if (!linePoints) return;
     const { start, end } = linePoints;
     let startTime = 0;
     const totalDurationSec = videoDuration;
+
+    // ease-in-out: sinematik yavaş başla/bitir
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
 
     const zoomLoop = () => {
       if (frameId === null) return;
@@ -128,7 +134,8 @@ const ZoomService = (function () {
         frameId = requestAnimationFrame(zoomLoop);
         return;
       }
-      const t = Math.min(1, elapsed / totalDurationSec);
+      const tRaw = Math.min(1, elapsed / totalDurationSec);
+      const t = easeInOutCubic(tRaw);
       const target = Cesium.Cartesian3.lerp(start, end, t, new Cesium.Cartesian3());
       viewer.camera.lookAt(
         target,
@@ -141,10 +148,10 @@ const ZoomService = (function () {
     const firstTarget = start;
     viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(firstTarget, 1), {
       offset: new Cesium.HeadingPitchRange(heading, pitch, cameraRange),
-      duration: 1.5
+      duration: 2.5
     });
 
-    const flyToDuration = 1500;
+    const flyToDuration = 2500;
     const totalDelayBeforeCapture = flyToDuration + alignmentDelayMs;
 
     if (autoplay) {
@@ -180,9 +187,14 @@ const ZoomService = (function () {
     }
   }
 
+  async function getLinePointsForType(center, polygonPositions, terrainProvider, zoomType) {
+    return getLinePoints(center, polygonPositions, terrainProvider, zoomType);
+  }
+
   return {
     run,
     stop,
+    getLinePoints: getLinePointsForType,
     get isRunning() {
       return frameId !== null;
     }

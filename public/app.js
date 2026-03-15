@@ -114,6 +114,8 @@ async function captureFramesAndUpload(viewer, jobId, duration = 12) {
   if (hint) hint.textContent = `${frames.length} frame gönderildi. Sunucuda video üretiliyor...`;
 }
 
+const TRANSITION_DELAY_MS = 1000; // Zoom servisleri arası kısa geçiş (donma önleme)
+
 async function runAllSequential(viewer, opts) {
   const { center, polygonPositions, terrainProvider, cameraRange, heading, pitch, videoDuration, alignmentDelayMs, job_id } = opts;
   const allFrames = [];
@@ -122,31 +124,48 @@ async function runAllSequential(viewer, opts) {
     allFrames.push(...frames);
   };
 
+  const transitionPause = () => new Promise(r => setTimeout(r, TRANSITION_DELAY_MS));
+
+  // Zoom noktalarını önceden hesapla - geçişlerde donma olmasın
+  console.log('[all] Zoom noktaları hesaplanıyor...');
+  const [lineA, lineC, lineB] = await Promise.all([
+    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zooma'),
+    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zoomc'),
+    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zoomb')
+  ]);
+  if (!lineA || !lineC || !lineB) {
+    console.error('[all] Zoom noktaları hesaplanamadı');
+    return;
+  }
+
   console.log('[all] orbit başlıyor...');
   await OrbitService.run(viewer, {
     center, cameraRange, heading, pitch, videoDuration, alignmentDelayMs,
     tour: true, autoplay: true, save: true, job_id, onCapture: captureOnly
   });
   OrbitService.stop();
+  await transitionPause();
 
   console.log('[all] zoomA başlıyor...');
   await ZoomService.run(viewer, {
     center, polygonPositions, terrainProvider, cameraRange, heading, pitch, videoDuration, alignmentDelayMs,
-    tour: true, autoplay: true, save: true, job_id, onCapture: captureOnly, zoomType: 'zooma'
+    tour: true, autoplay: true, save: true, job_id, onCapture: captureOnly, zoomType: 'zooma', linePoints: lineA
   });
   ZoomService.stop();
+  await transitionPause();
 
   console.log('[all] zoomC başlıyor...');
   await ZoomService.run(viewer, {
     center, polygonPositions, terrainProvider, cameraRange, heading, pitch, videoDuration, alignmentDelayMs,
-    tour: true, autoplay: true, save: true, job_id, onCapture: captureOnly, zoomType: 'zoomc'
+    tour: true, autoplay: true, save: true, job_id, onCapture: captureOnly, zoomType: 'zoomc', linePoints: lineC
   });
   ZoomService.stop();
+  await transitionPause();
 
   console.log('[all] zoomB başlıyor...');
   await ZoomService.run(viewer, {
     center, polygonPositions, terrainProvider, cameraRange, heading, pitch, videoDuration, alignmentDelayMs,
-    tour: true, autoplay: true, save: true, job_id, onCapture: captureOnly, zoomType: 'zoomb'
+    tour: true, autoplay: true, save: true, job_id, onCapture: captureOnly, zoomType: 'zoomb', linePoints: lineB
   });
   ZoomService.stop();
 
