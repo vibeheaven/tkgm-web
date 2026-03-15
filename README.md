@@ -8,18 +8,14 @@ Node.js ile çalışan, CesiumJS tabanlı tam ekran dikey harita arayüzü. Term
 npm install
 ```
 
-### Google Drive (Opsiyonel)
+### DigitalOcean Spaces (Opsiyonel)
 
-Video/fotoğraflar otomatik olarak Drive'a yüklenir. Yükleme başarılıysa sunucudan silinir.
+Video/fotoğraflar otomatik olarak DigitalOcean Spaces'e yüklenir. Yükleme başarılıysa sunucudan silinir.
 
-**OAuth 2.0 kullanımı (Nisan 2025 sonrası Service Account çalışmıyor):**
-
-1. [Google Cloud Console](https://console.cloud.google.com) → Proje → APIs & Services → **Google Drive API** etkinleştir
-2. Credentials → **Create Credentials** → **OAuth client ID** → Application type: **Web application**
-3. Authorized redirect URIs: `http://localhost:3010/api/drive-auth/callback` (sunucu farklı host/port ise onu ekle)
-4. Client ID ve Client Secret'ı env'e ekle: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`
-5. Sunucuyu başlat, tarayıcıda **http://localhost:3010/api/drive-auth** adresine git
-6. Google ile giriş yap, izin ver → Refresh token kaydedilir
+1. [DigitalOcean](https://cloud.digitalocean.com) → Spaces → Create Space
+2. API Keys → Generate New Key → Access Key ve Secret Key al
+3. `.env` dosyasına ekle:
+   - `SPACES_KEY`, `SPACES_SECRET`, `SPACES_BUCKET`, `SPACES_REGION` (örn. `nyc3`)
 
 ## Çalıştırma
 
