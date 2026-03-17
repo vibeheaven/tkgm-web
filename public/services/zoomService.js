@@ -1,10 +1,9 @@
 /**
  * Zoom Kamera Servisi (zoomA, zoomB, zoomC)
- * Köşeden başlayıp merkeze doğru çizginin polygon karşı kenarındaki
- * kesişim noktasına kadar polygon üzerinden geçer.
- * zoomA: A köşesi (0) → karşı nokta
- * zoomB: karşı nokta → A köşesi (ters yön)
- * zoomC: Rastgele köşe → karşı nokta (aynı kamera hareketi)
+ * Orbit çemberi üzerinde hareket - Orbit ile aynı mantık:
+ * zoomA: Üst köşeden (kuzey) çeyrek dönüş (0° → 90°)
+ * zoomC: Alt köşeden (güney) çeyrek dönüş (180° → 270°)
+ * zoomB: Sol yarı (batıdan doğuya) yarım çember (-90° → 90°)
  */
 const ZoomService = (function () {
   let frameId = null;
@@ -17,81 +16,31 @@ const ZoomService = (function () {
   }
 
   /**
-   * A köşesinden (vertex 0) merkeze doğru çizilen ışının polygon kenarı ile
-   * kesişim noktasını bulur (A'nın tam zıttı).
+   * zoomA: Üst (kuzey, 0°) → doğu (90°) çeyrek
+   * zoomC: Alt (güney, π) → batı (270°) çeyrek
+   * zoomB: Sol (batı, -90°) → doğu (90°) yarım
    */
-  function raySegmentIntersection(lonA, latA, dirLon, dirLat, lon1, lat1, lon2, lat2) {
-    const denom = (lon2 - lon1) * dirLat - (lat2 - lat1) * dirLon;
-    if (Math.abs(denom) < 1e-12) return null;
-    const s = (dirLon * (lat1 - latA) - dirLat * (lon1 - lonA)) / denom;
-    if (s < -1e-6 || s > 1 + 1e-6) return null;
-    const lon = lon1 + s * (lon2 - lon1);
-    const lat = lat1 + s * (lat2 - lat1);
-    let t;
-    if (Math.abs(dirLon) > 1e-12) {
-      t = (lon - lonA) / dirLon;
-    } else {
-      t = (lat - latA) / dirLat;
-    }
-    if (t < 1e-6) return null;
-    return { t, lon, lat };
-  }
-
-  /**
-   * zoomA: A köşesi (0) → karşı nokta
-   * zoomB: karşı nokta → A köşesi
-   * zoomC: Rastgele köşe → karşı nokta
-   */
-  async function getLinePoints(center, polygonPositions, terrainProvider, zoomType) {
+  async function getLinePoints(center, polygonPositions, terrainProvider, zoomType, opts) {
     const n = polygonPositions.length;
     if (n < 3) return null;
 
-    let startIdx = 0;
-    if (zoomType === 'zoomc') {
-      startIdx = Math.floor(Math.random() * n);
+    let startHeading, endHeading;
+
+    if (zoomType === 'zooma') {
+      startHeading = 0;
+      endHeading = Math.PI / 2;
+    } else if (zoomType === 'zoomc') {
+      startHeading = Math.PI;
+      endHeading = (3 * Math.PI) / 2;
+    } else if (zoomType === 'zoomb') {
+      startHeading = -Math.PI / 2;
+      endHeading = Math.PI / 2;
+    } else {
+      startHeading = 0;
+      endHeading = Math.PI / 2;
     }
 
-    const cartoStart = Cesium.Cartographic.fromCartesian(polygonPositions[startIdx]);
-    const cartoC = Cesium.Cartographic.fromCartesian(center);
-    const lonA = cartoStart.longitude, latA = cartoStart.latitude;
-    const lonC = cartoC.longitude, latC = cartoC.latitude;
-    const dx = lonC - lonA, dy = latC - latA;
-    const len = Math.sqrt(dx * dx + dy * dy) || 1e-10;
-    const dirLon = dx / len, dirLat = dy / len;
-
-    let bestT = Infinity;
-    let bestLon = 0, bestLat = 0;
-
-    for (let i = 0; i < n; i++) {
-      const i1 = i, i2 = (i + 1) % n;
-      const p1 = Cesium.Cartographic.fromCartesian(polygonPositions[i1]);
-      const p2 = Cesium.Cartographic.fromCartesian(polygonPositions[i2]);
-      if (i1 === startIdx || i2 === startIdx) continue;
-      const hit = raySegmentIntersection(lonA, latA, dirLon, dirLat, p1.longitude, p1.latitude, p2.longitude, p2.latitude);
-      if (hit && hit.t < bestT) {
-        bestT = hit.t;
-        bestLon = hit.lon;
-        bestLat = hit.lat;
-      }
-    }
-
-    if (bestT === Infinity) {
-      const dir = Cesium.Cartesian3.subtract(center, polygonPositions[startIdx], new Cesium.Cartesian3());
-      const dist = Math.max(Cesium.Cartesian3.magnitude(dir), 100);
-      const dirNorm = Cesium.Cartesian3.normalize(dir, new Cesium.Cartesian3());
-      const end = Cesium.Cartesian3.add(polygonPositions[startIdx], Cesium.Cartesian3.multiplyByScalar(dirNorm, dist, new Cesium.Cartesian3()), new Cesium.Cartesian3());
-      return zoomType === 'zoomb' ? { start: end, end: polygonPositions[startIdx] } : { start: polygonPositions[startIdx], end };
-    }
-
-    const cartoEnd = new Cesium.Cartographic(bestLon, bestLat);
-    await Cesium.sampleTerrainMostDetailed(terrainProvider, [cartoEnd]);
-    const endPoint = Cesium.Cartesian3.fromRadians(cartoEnd.longitude, cartoEnd.latitude, cartoEnd.height || 0);
-    const startPoint = polygonPositions[startIdx];
-
-    if (zoomType === 'zoomb') {
-      return { start: endPoint, end: startPoint };
-    }
-    return { start: startPoint, end: endPoint };
+    return { startHeading, endHeading };
   }
 
   async function run(viewer, opts) {
@@ -115,13 +64,13 @@ const ZoomService = (function () {
       linePoints: precomputedLinePoints
     } = opts;
 
-    const linePoints = precomputedLinePoints || await getLinePoints(center, polygonPositions, terrainProvider, zoomType || 'zooma');
+    const linePoints = precomputedLinePoints || await getLinePoints(center, polygonPositions, terrainProvider, zoomType || 'zooma', { cameraRange, pitch });
     if (!linePoints) return;
-    const { start, end } = linePoints;
+    const { startHeading, endHeading } = linePoints;
     let startTime = 0;
     const totalDurationSec = videoDuration;
+    const pitchRad = (typeof pitch === 'number' && Math.abs(pitch) <= Math.PI) ? pitch : Cesium.Math.toRadians(-20);
 
-    // ease-in-out: sinematik yavaş başla/bitir
     function easeInOutCubic(t) {
       return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
@@ -136,18 +85,17 @@ const ZoomService = (function () {
       }
       const tRaw = Math.min(1, elapsed / totalDurationSec);
       const t = easeInOutCubic(tRaw);
-      const target = Cesium.Cartesian3.lerp(start, end, t, new Cesium.Cartesian3());
+      const camHeading = startHeading + t * (endHeading - startHeading);
       viewer.camera.lookAt(
-        target,
-        new Cesium.HeadingPitchRange(heading, pitch, cameraRange)
+        center,
+        new Cesium.HeadingPitchRange(camHeading, pitchRad, cameraRange)
       );
       if (viewer.scene.requestRenderMode) viewer.scene.requestRender();
       frameId = requestAnimationFrame(zoomLoop);
     };
 
-    const firstTarget = start;
-    viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(firstTarget, 1), {
-      offset: new Cesium.HeadingPitchRange(heading, pitch, cameraRange),
+    viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(center, 1), {
+      offset: new Cesium.HeadingPitchRange(startHeading, pitchRad, cameraRange),
       duration: 2.5
     });
 
@@ -187,8 +135,8 @@ const ZoomService = (function () {
     }
   }
 
-  async function getLinePointsForType(center, polygonPositions, terrainProvider, zoomType) {
-    return getLinePoints(center, polygonPositions, terrainProvider, zoomType);
+  async function getLinePointsForType(center, polygonPositions, terrainProvider, zoomType, opts) {
+    return getLinePoints(center, polygonPositions, terrainProvider, zoomType, opts);
   }
 
   return {

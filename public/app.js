@@ -128,10 +128,11 @@ async function runAllSequential(viewer, opts) {
 
   // Zoom noktalarını önceden hesapla - geçişlerde donma olmasın
   console.log('[all] Zoom noktaları hesaplanıyor...');
+  const zoomOpts = { cameraRange, pitch };
   const [lineA, lineC, lineB] = await Promise.all([
-    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zooma'),
-    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zoomc'),
-    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zoomb')
+    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zooma', zoomOpts),
+    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zoomc', zoomOpts),
+    ZoomService.getLinePoints(center, polygonPositions, terrainProvider, 'zoomb', zoomOpts)
   ]);
   if (!lineA || !lineC || !lineB) {
     console.error('[all] Zoom noktaları hesaplanamadı');

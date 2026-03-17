@@ -32,8 +32,8 @@ const OrbitService = (function () {
       onCapture
     } = opts;
 
-    // Sinematik: 90° per süre (15 sn'de 90° = 6°/sn), 360° yerine yavaş dönüş
-    const degPerDuration = 90;
+    // 360° tam tur
+    const degPerDuration = 360;
     state = {
       center,
       range: cameraRange,
