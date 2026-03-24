@@ -223,7 +223,6 @@ async function processJob(jobId, expectedFrames) {
         .run();
     });
 
-    fs.rmSync(framesDir, { recursive: true });
     job.status = 'completed';
     job.path = mp4Path;
     job.filename = mp4Name;
@@ -239,9 +238,10 @@ async function processJob(jobId, expectedFrames) {
     uploadToSpaces(jobId, mp4Path, mp4Name).then((r) => {
       if (r.success && r.url) {
         job.url = r.url;
-        deleteFilePermanently(mp4Path);
         job.path = null;
       }
+      // Yükleme sonrası (başarılı ya da değil) klasörü temizle
+      if (fs.existsSync(framesDir)) fs.rmSync(framesDir, { recursive: true });
     });
   } catch (err) {
     job.status = 'failed';
