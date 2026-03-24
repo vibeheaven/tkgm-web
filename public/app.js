@@ -311,8 +311,8 @@ async function handleDrawPolygon(data) {
         Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, c.height || 0)
       );
 
-      // Parcel adını tüm poligonların ortasına yaz
-      if (parcel_name) {
+      // Parcel adı label'ı: photo modunda gösterilmez
+      if (parcel_name && cameraType !== 'photo') {
         const labelEntity = viewer.entities.add({
           position: center,
           label: {
@@ -381,8 +381,28 @@ async function handleDrawPolygon(data) {
         });
       } else if (cameraType === 'photo' && save && job_id) {
         try {
-          await viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(center, 1), {
-            offset: new Cesium.HeadingPitchRange(heading, pitch, cameraRange),
+          // Fotoğraf: tam tepeden (-90°), arsanın tamamı çerçevede, yazısız
+          const photoPitch = Cesium.Math.toRadians(-90);
+          const photoHeading = 0; // Kuzey yukarı
+
+          // Tüm poligon köşelerini Cartesian3'e çevir ve bounding sphere hesapla
+          const allPositions = polygons.flatMap(poly =>
+            poly.map(p => Cesium.Cartesian3.fromDegrees(p.longitude, p.latitude, centerHeight))
+          );
+          const boundSphere = Cesium.BoundingSphere.fromPoints(allPositions);
+
+          // Tepeden bakışta görüş alanına tam sığacak yükseklik
+          // vFOV = 60° → tan(30°) ≈ 0.577, dikey ekranda yükseklik kısıtlayıcı
+          const vFOV = Math.PI / 3;
+          const viewWidth = size ? size.width : (container.clientWidth || window.innerWidth);
+          const viewHeight = size ? size.height : (container.clientHeight || window.innerHeight);
+          const aspectRatio = viewWidth / viewHeight;
+          const hFOV = 2 * Math.atan(Math.tan(vFOV / 2) * aspectRatio);
+          const limitingFOV = Math.min(hFOV, vFOV);
+          const photoRange = Math.max((boundSphere.radius / Math.tan(limitingFOV / 2)) * 1.25, 50);
+
+          await viewer.camera.flyToBoundingSphere(boundSphere, {
+            offset: new Cesium.HeadingPitchRange(photoHeading, photoPitch, photoRange),
             duration: 1.5
           });
           await new Promise(r => setTimeout(r, alignmentDelayMs));
