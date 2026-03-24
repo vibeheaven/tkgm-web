@@ -125,8 +125,8 @@ async function processJob(jobId, expectedFrames) {
 
   job.status = 'processing';
   const framesDir = path.join(JOBS_DIR, jobId);
-  const mp4Name = jobId + '.mp4';
-  const mp4Path = path.join(RECORDINGS_DIR, mp4Name);
+  const mp4Name = 'ham_video.mp4';
+  const mp4Path = path.join(JOBS_DIR, jobId, mp4Name);
 
   const frameFiles = fs.readdirSync(framesDir).filter(f => /^frame_\d{4}\.(jpg|png)$/.test(f));
   const totalFrames = frameFiles.length;
