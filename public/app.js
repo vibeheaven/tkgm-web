@@ -381,29 +381,39 @@ async function handleDrawPolygon(data) {
         });
       } else if (cameraType === 'photo' && save && job_id) {
         try {
-          // Fotoğraf: tam tepeden (-90°), arsanın tamamı çerçevede, yazısız
-          const photoPitch = Cesium.Math.toRadians(-90);
-          const photoHeading = 0; // Kuzey yukarı
+          // Fotoğraf: tam tepeden (pitch=-90°), arsa tam ortada, yazısız
+          // flyToBoundingSphere -90°'de gimbal lock yapar → camera.setView kullan
 
-          // Tüm poligon köşelerini Cartesian3'e çevir ve bounding sphere hesapla
-          const allPositions = polygons.flatMap(poly =>
-            poly.map(p => Cesium.Cartesian3.fromDegrees(p.longitude, p.latitude, centerHeight))
-          );
-          const boundSphere = Cesium.BoundingSphere.fromPoints(allPositions);
+          // Coğrafi genişliği metre cinsinden hesapla
+          const allLons2 = polygons.flatMap(p => p.map(pt => pt.longitude));
+          const allLats2 = polygons.flatMap(p => p.map(pt => pt.latitude));
+          const lonExtentDeg = Math.max(...allLons2) - Math.min(...allLons2);
+          const latExtentDeg = Math.max(...allLats2) - Math.min(...allLats2);
+          const metersPerDegLat = 111320;
+          const metersPerDegLon = 111320 * Math.cos(Cesium.Math.toRadians(centerLat));
+          const lonExtentM = lonExtentDeg * metersPerDegLon;
+          const latExtentM = latExtentDeg * metersPerDegLat;
 
-          // Tepeden bakışta görüş alanına tam sığacak yükseklik
-          // vFOV = 60° → tan(30°) ≈ 0.577, dikey ekranda yükseklik kısıtlayıcı
-          const vFOV = Math.PI / 3;
+          // Ekran FOV hesabı
+          const vFOV = Math.PI / 3; // 60°
           const viewWidth = size ? size.width : (container.clientWidth || window.innerWidth);
           const viewHeight = size ? size.height : (container.clientHeight || window.innerHeight);
           const aspectRatio = viewWidth / viewHeight;
           const hFOV = 2 * Math.atan(Math.tan(vFOV / 2) * aspectRatio);
-          const limitingFOV = Math.min(hFOV, vFOV);
-          const photoRange = Math.max((boundSphere.radius / Math.tan(limitingFOV / 2)) * 1.25, 50);
 
-          await viewer.camera.flyToBoundingSphere(boundSphere, {
-            offset: new Cesium.HeadingPitchRange(photoHeading, photoPitch, photoRange),
-            duration: 1.5
+          // Tepeden bakışta: ekran genişliği ↔ doğu-batı, ekran yüksekliği ↔ kuzey-güney
+          const altFromLon = (lonExtentM / 2) / Math.tan(hFOV / 2) * 1.4;
+          const altFromLat = (latExtentM / 2) / Math.tan(vFOV / 2) * 1.4;
+          const photoAlt = Math.max(altFromLon, altFromLat, centerHeight + 150);
+
+          // camera.setView: animasyonsuz, kesin tepeden bakış (gimbal lock yok)
+          viewer.camera.setView({
+            destination: Cesium.Cartesian3.fromDegrees(centerLon, centerLat, photoAlt),
+            orientation: {
+              heading: 0,
+              pitch: Cesium.Math.toRadians(-90),
+              roll: 0
+            }
           });
           await new Promise(r => setTimeout(r, alignmentDelayMs));
           const frames = await captureFrames(viewer, 1);
