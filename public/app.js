@@ -352,8 +352,8 @@ async function handleDrawPolygon(data) {
       const vFOV = Math.PI / 3; // Cesium default 60°
       const hFOV = 2 * Math.atan(Math.tan(vFOV / 2) * aspectRatio);
       const limitingFOV = Math.min(hFOV, vFOV);
-      const cameraRange = Math.max(maxDist / Math.tan(limitingFOV / 2) * 1.6, 50);
-      const pitch = Cesium.Math.toRadians(typeof pitchDeg === 'number' ? pitchDeg : -45);
+      const cameraRange = Math.max(maxDist / Math.tan(limitingFOV / 2) * 3.0, 50);
+      const pitch = Cesium.Math.toRadians(typeof pitchDeg === 'number' ? pitchDeg : -10);
 
       if (!farthestVertex) farthestVertex = center;
       const transform = Cesium.Transforms.eastNorthUpToFixedFrame(center);
