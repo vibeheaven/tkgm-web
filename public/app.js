@@ -251,13 +251,15 @@ async function handleDrawPolygon(data) {
       );
       const closedPositions = [...positionsWithHeight, positionsWithHeight[0].clone()];
 
-      // Border: polyline (terrain üzerinde biraz havada - neon parlatmalı)
+      // Border: polyline (terrain üzerinde biraz havada - neon parlamalı animasyon)
       const lineEntity = viewer.entities.add({
         polyline: {
           positions: closedPositions,
           width: Math.max(lineWidth, 10), // Parlama daha iyi görünsün diye minimum kalınlık
           material: new Cesium.PolylineGlowMaterialProperty({
-            glowPower: 0.3,
+            glowPower: new Cesium.CallbackProperty(function() {
+              return 0.2 + 0.15 * Math.sin(Date.now() / 250.0); // Kalp atışı / nefes alan parlama efekti
+            }, false),
             taperPower: 1,
             color: color
           })
@@ -310,25 +312,7 @@ async function handleDrawPolygon(data) {
         Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, c.height || 0)
       );
 
-      // Parcel adı label'ı: photo modunda gösterilmez
-      if (parcel_name && cameraType !== 'photo') {
-        const labelEntity = viewer.entities.add({
-          position: center,
-          label: {
-            text: parcel_name,
-            font: 'bold 28px sans-serif',
-            fillColor: Cesium.Color.WHITE,
-            outlineColor: Cesium.Color.BLACK,
-            outlineWidth: 2,
-            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            verticalOrigin: Cesium.VerticalOrigin.CENTER,
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-            pixelOffset: new Cesium.Cartesian2(0, 0),
-            disableDepthTestDistance: Number.POSITIVE_INFINITY
-          }
-        });
-        kmlPolygonEntities.push(labelEntity);
-      }
+      // Yazı (Label) isteğe bağlı olarak tamamen kaldırıldı.
 
       // Tüm poligonlardaki en uzak köşe (kamera mesafesi için)
       let maxDist = 0;
