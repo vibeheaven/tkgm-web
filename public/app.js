@@ -247,21 +247,20 @@ async function handleDrawPolygon(data) {
       const cartographics = deduped.map(p => Cesium.Cartographic.fromDegrees(p.longitude, p.latitude));
       await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartographics);
       const positionsWithHeight = cartographics.map(c =>
-        Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, c.height || 0)
+        Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, (c.height || 0) + 5)
       );
       const closedPositions = [...positionsWithHeight, positionsWithHeight[0].clone()];
 
-      // Border: polyline (terrain üzerinde)
+      // Border: polyline (terrain üzerinde biraz havada - neon parlatmalı)
       const lineEntity = viewer.entities.add({
         polyline: {
           positions: closedPositions,
-          width: lineWidth,
-          material: new Cesium.PolylineOutlineMaterialProperty({
-            color: color,
-            outlineColor: Cesium.Color.WHITE,
-            outlineWidth: 2
-          }),
-          clampToGround: true
+          width: Math.max(lineWidth, 10), // Parlama daha iyi görünsün diye minimum kalınlık
+          material: new Cesium.PolylineGlowMaterialProperty({
+            glowPower: 0.3,
+            taperPower: 1,
+            color: color
+          })
         }
       });
       kmlPolygonEntities.push(lineEntity);
@@ -270,7 +269,7 @@ async function handleDrawPolygon(data) {
       const fillEntity = viewer.entities.add({
         polygon: {
           hierarchy: new Cesium.PolygonHierarchy(positionsWithHeight),
-          material: color.withAlpha(0.15),
+          material: color.withAlpha(0.25),
           perPositionHeight: true
         }
       });
