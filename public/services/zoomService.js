@@ -69,7 +69,7 @@ const ZoomService = (function () {
     const { startHeading, endHeading } = linePoints;
     let startTime = 0;
     const totalDurationSec = videoDuration;
-    const pitchRad = (typeof pitch === 'number' && Math.abs(pitch) <= Math.PI) ? pitch : Cesium.Math.toRadians(-20);
+    const pitchRad = (typeof pitch === 'number' && Math.abs(pitch) <= Math.PI) ? pitch : Cesium.Math.toRadians(-45);
 
     function easeInOutCubic(t) {
       return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
